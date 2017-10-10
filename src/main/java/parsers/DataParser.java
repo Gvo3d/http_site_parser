@@ -1,41 +1,62 @@
 package parsers;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
 import models.DescriptionData;
 import models.Offer;
+import models.SitePage;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.StringReader;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DataParser {
-    private final static String PRODUCT_NAME_REGEX = "^(\\/\\p\\/)";
-    private final static String DOM_CONTAINER_ELEMENT = "container";
-    private final static String DOM_PRODUCT_NAME_ELEMENT = "productName";
-    private final static List<String> notLinkStartsRules = new ArrayList<>();
-    private final static List<String> notLinkEqualsRules = new ArrayList<>();
-    private StringLengthComparator comparator = new StringLengthComparator();
-    private int descriptionContainerDefaultSize = 200;
-    private final static String LINE_SEPARATOR = System.lineSeparator();
+    private final static String PRODUCT_NAME_PREFIX = "/p/";
+    private final static String PRODUCT_ENDING_REGEX = ".*\\d$";
+    private final static List<String> notLinkStartsRules = new ArrayList<>(4);
+    private final static List<String> notLinkEqualsRules = new ArrayList<>(1);
+    private final static List<String> notLinkEndsRules = new ArrayList<>(2);
+    private StringLengthComparator comparator;
+    private final ColorJsonSearcher searcher;
 
     public DataParser() {
+        comparator = new StringLengthComparator();
+        searcher = new ColorJsonSearcher();
         notLinkStartsRules.add("//");
         notLinkStartsRules.add("http");
+        notLinkStartsRules.add("www");
         notLinkStartsRules.add("mailto");
         notLinkEqualsRules.add("/");
+        notLinkEndsRules.add(".css");
+        notLinkEndsRules.add(".js");
     }
 
     public boolean hasAProduct(String pageName) {
-        return pageName.matches(PRODUCT_NAME_REGEX);
+        return pageName.startsWith(PRODUCT_NAME_PREFIX) && pageName.matches(PRODUCT_ENDING_REGEX);
     }
 
-    public List<String> getUrls(String page) {
+    public List<SitePage> getAllUrls(String page) {
         Document doc = Jsoup.parse(page);
         Elements links = doc.select("a[href]");
-        return links.eachAttr("href").stream().filter(this::check).collect(Collectors.toList());
+        List<SitePage> pages = new ArrayList<>();
+        links.eachAttr("href").stream().filter(this::check).forEach(x -> pages.add(new SitePage(x)));
+        return pages;
+    }
+
+    public List<SitePage> getKeywordSpecificUrls(String page) {
+        Document doc = Jsoup.parse(page);
+        Elements links = doc.select("div[class*=row list-wrapper product-image-list]").select("div[class*=col-xs-4 isLayout]");
+        List<SitePage> pages = new ArrayList<>();
+        links.select("div[class*=product-image] a[href]").eachAttr("href").stream().filter(this::check).forEach(x -> pages.add(new SitePage(x)));
+        links = doc.select("ul[id*=pl-pager-bottom]").select("li[class=page]");
+        links.select("a[href]").eachAttr("href").stream().filter(this::check).forEach(x -> pages.add(new SitePage(x)));
+        return pages;
     }
 
     private boolean check(String o) {
@@ -49,12 +70,17 @@ public class DataParser {
                 return false;
             }
         }
+        for (String rule : notLinkEndsRules) {
+            if (o.endsWith(rule)) {
+                return false;
+            }
+        }
         return true;
     }
 
     public Offer getProductData(String page) {
         Document doc = Jsoup.parse(page);
-        Elements elements = doc.getElementsByClass(DOM_CONTAINER_ELEMENT);
+        Elements elements = doc.getElementsByClass("container");
         Offer offer = new Offer();
         String[] brandAndName = elements.select("h1[class*=productName]").first().text().split(" \\| ");
         offer.setBrand(brandAndName[0]);
@@ -63,15 +89,11 @@ public class DataParser {
         offer.setInitialPrice(initialPrice != null ? initialPrice.text() : "");
         offer.setPrice(getPrice(elements));
         offer.setArticleId(getArticle(elements));
-//        offer.setColor(getColor(elements));
+        offer.setColor(getColor(doc.children()));
         offer.setSizes(getSizes(elements));
         offer.setShippingCosts(getShippingCost(elements));
         offer.setDescription(getDescription(elements));
         return offer;
-    }
-
-    private String getData(Elements elements, String classNameRegex) {
-        return elements.select(classNameRegex).first().data();
     }
 
     private String getPrice(Elements elements) {
@@ -98,7 +120,12 @@ public class DataParser {
         for (Element element : elements.select("div[class*=wrapper]").select("div[class*=container]")) {
             if (element.select("p[class*=subline]").first() != null) {
                 DescriptionData data = new DescriptionData(getSubline(element));
-                data.setData(getAttributes(element.select("div[class*=attributeWrapper]").first()));
+                Element description = element.select("p[class*=productDescriptionText]").first();
+                if (description != null) {
+                    data.setData(element.text());
+                } else {
+                    data.setData(getAttributes(element.select("div[class*=attributeWrapper]").first()));
+                }
                 result.add(data);
             }
 
@@ -124,8 +151,26 @@ public class DataParser {
     }
 
     private String getColor(Elements elements) {
-        Element element = elements.select("div[class*=.rc-tooltip]").first();
-        return null;
+        String color = "NO";
+        Elements colorElements = elements.select("script[charset=UTF-8]");
+        ListIterator<Element> iter = colorElements.listIterator(colorElements.size());
+        while (iter.hasPrevious()) {
+            Element element = iter.previous();
+            if (element.data().startsWith("window.__INITIAL_STATE__=")) {
+                JsonParser parser = new JsonParser();
+                JsonReader reader = new JsonReader(new StringReader(element.data().split("window.__INITIAL_STATE__=")[1]));
+                reader.setLenient(true);
+                try {
+                    JsonObject o = parser.parse(reader).getAsJsonObject();
+                    String temp = searcher.deserialize(o, null, null);
+                    if (temp != null) {
+                        color = temp;
+                    }
+                } catch (IllegalStateException e) {
+                }
+            }
+        }
+        return color;
     }
 
     private List<String> getSizes(Elements elements) {
@@ -133,9 +178,9 @@ public class DataParser {
         Elements sizesContainers = elements.select("div[class*=js-size-dropdown-wrapper wrapper]").select("div[class*=list]").select("div[data-reactid]");
         Elements sizeData = sizesContainers.select("span:not([class*=disabled])").select("span[class*=paddingLeft]");
 
-        if (sizeData.isEmpty()){
+        if (sizeData.isEmpty()) {
             sizeData = sizesContainers.select("div[class*=row]");
-            for (Element element:sizeData){
+            for (Element element : sizeData) {
                 sizes.add(getSizeDataFromTable(element));
             }
         } else {
@@ -148,7 +193,7 @@ public class DataParser {
         return sizes.isEmpty() ? Collections.emptyList() : sizes;
     }
 
-    private String getSizeDataFromTable(Element element){
+    private String getSizeDataFromTable(Element element) {
         return element.children().eachText().stream().collect(Collectors.joining(" "));
     }
 
@@ -158,7 +203,13 @@ public class DataParser {
     }
 
     private String getSubline(Element parentElement) {
-        return parentElement.select("p[class*=subline]").first().text();
+        String text = null;
+        try {
+            text = parentElement.select("p[class*=subline]").first().text();
+        } catch (NullPointerException e) {
+            text = "Extras";
+        }
+        return text;
     }
 
     private List<String> getAttributes(Element element) {

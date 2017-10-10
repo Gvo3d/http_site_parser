@@ -1,5 +1,6 @@
 package models;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DescriptionData {
@@ -26,15 +27,20 @@ public class DescriptionData {
         this.data = data;
     }
 
-    public void addData(List<String> data){
+    public void setData(String data) {
+        this.data = new ArrayList<>();
+        this.data.add(data);
+    }
+
+    public void addData(List<String> data) {
         this.data.addAll(data);
     }
 
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder("DescriptionData{\n   name=");
-            builder.append(name).append("\n   data:\n");
-        data.forEach(x->builder.append("        ").append(x.toString()).append("\n"));
+        builder.append(name).append("\n   data:\n");
+        data.forEach(x -> builder.append("        ").append(x).append("\n"));
         return builder.toString();
     }
 }

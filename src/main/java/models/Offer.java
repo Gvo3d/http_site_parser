@@ -1,6 +1,5 @@
 package models;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class Offer {
@@ -70,7 +69,7 @@ public class Offer {
         this.description = description;
     }
 
-    public void addDescriptionData(DescriptionData data){
+    public void addDescriptionData(DescriptionData data) {
         this.description.add(data);
     }
 
@@ -93,7 +92,7 @@ public class Offer {
     @Override
     public String toString() {
         StringBuilder desr = new StringBuilder();
-        for (DescriptionData data: description){
+        for (DescriptionData data : description) {
             desr.append(data).append("\n");
         }
         return "Offer{" +

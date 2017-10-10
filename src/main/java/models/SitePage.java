@@ -1,13 +1,17 @@
 package models;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 public class SitePage {
     private String url;
     private Offer offer;
+    private ReentrantLock lock;
     private boolean fetched;
-    private boolean hasProduct;
 
     public SitePage(String url) {
+        this.lock = new ReentrantLock();
         this.url = url;
+        this.offer = null;
         this.fetched = false;
     }
 
@@ -19,20 +23,24 @@ public class SitePage {
         this.url = url;
     }
 
+    public Offer getOffer() {
+        return offer;
+    }
+
+    public void setOffer(Offer offer) {
+        this.offer = offer;
+    }
+
+    public ReentrantLock getLock() {
+        return lock;
+    }
+
     public boolean isFetched() {
         return fetched;
     }
 
     public void setFetched(boolean fetched) {
         this.fetched = fetched;
-    }
-
-    public boolean isHasProduct() {
-        return hasProduct;
-    }
-
-    public void setHasProduct(boolean hasProduct) {
-        this.hasProduct = hasProduct;
     }
 
     @Override
@@ -48,5 +56,14 @@ public class SitePage {
     @Override
     public int hashCode() {
         return url.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "SitePage{" +
+                "url='" + url + '\'' +
+                ", offer=" + offer +
+                ", fetched=" + fetched +
+                '}';
     }
 }
