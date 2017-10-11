@@ -26,3 +26,9 @@ No. Type    Description
 
 Software fetching data from site with multiple threads, writing memory usage, products and pages counters and elapsed time statistics. It uses one http request to get data for parsing and most of the data parsed from HTML code, only color parsed from JSON with page load data.
 MultiThreading class - HttpDataFetcher, it simultaneously reads, parses data and collecting it in concurrent hash set. The count of threads that are working at a single time is up to your physical and virtual cores count;
+
+
+P.S. If you have problems with socket timeout connection or else - add the custom timeouts like:
+${searcheable} 8000 8000 8000 true
+or for full algo:
+"" 10000 10000 10000 true 
