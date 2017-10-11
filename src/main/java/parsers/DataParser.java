@@ -82,7 +82,7 @@ public class DataParser {
         Document doc = Jsoup.parse(page);
         Elements elements = doc.getElementsByClass("container");
         Offer offer = new Offer();
-        String[] brandAndName = elements.select("h1[class*=productName]").first().text().split(" \\| ");
+        String[] brandAndName = getBrandAndName(doc);
         offer.setBrand(brandAndName[0]);
         offer.setName(brandAndName[1]);
         Element initialPrice = elements.select("span[class*=finalPrice]").select("span[class*=from]").first();
@@ -94,6 +94,20 @@ public class DataParser {
         offer.setShippingCosts(getShippingCost(elements));
         offer.setDescription(getDescription(elements));
         return offer;
+    }
+
+    private String[] getBrandAndName(Document doc){
+        Element elem = doc.getElementsByClass("container").select("h1[class*=productName]").first();
+        if (elem!=null) {
+            return elem.text().split(" \\| ");
+        } else {
+            elem = doc.getElementById("app");
+            Elements elements1 = elem.select("section[class*=layout]").select("div[data-reactid=576]");
+            elem = elements1.last();
+            elements1 = elem.select("div div div[class*=outerWrapper]").select("h1[class*=productName]");
+            elem = elements1.first();
+            return elem.text().split(" \\| ");
+        }
     }
 
     private String getPrice(Elements elements) {
