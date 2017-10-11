@@ -34,14 +34,15 @@ public class FullProductMapGenerator implements IProductMapGenerator {
         int cpus = rnt.availableProcessors();
         ExecutorService threadPool = Executors.newFixedThreadPool(cpus);
         for (int i = 0; i < cpus; i++) {
-            HttpDataFetcher fetcher = new HttpDataFetcher("Thread_" + i, url, pagesSet, executedPages, getSender(), true);
+            HttpDataFetcher fetcher = new HttpDataFetcher("Thread_" + i, url, pagesSet, executedPages, getSender(), true, Thread.currentThread());
             threadPool.execute(fetcher);
         }
-        threadPool.shutdown();
-        try {
-            threadPool.awaitTermination(30, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            LOGGER.warn("Interrupted, while waiting ending of algorhitm.", e);
+        synchronized (Thread.currentThread()) {
+            try {
+                Thread.currentThread().wait();
+            } catch (InterruptedException e) {
+                threadPool.shutdown();
+            }
         }
         List<Offer> offers = getOffersList(this.pagesSet);
         afterExecutionSerialization(offers, FILE_NAME);

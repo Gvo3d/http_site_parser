@@ -20,14 +20,16 @@ public class HttpDataFetcher implements Runnable {
     private String name;
     private String urlPrefix;
     private boolean fetchAllLinks;
+    private Thread parent;
 
-    public HttpDataFetcher(String name, String urlPrefix, Set<SitePage> pagesSet, AtomicInteger executed, HttpRequestSender sender, boolean fetchAllLinks) {
+    public HttpDataFetcher(String name, String urlPrefix, Set<SitePage> pagesSet, AtomicInteger executed, HttpRequestSender sender, boolean fetchAllLinks, Thread parent) {
         this.urlPrefix = urlPrefix;
         this.name = name;
         this.executed = executed;
         this.pagesSet = pagesSet;
         this.sender = sender;
         this.fetchAllLinks = fetchAllLinks;
+        this.parent = parent;
     }
 
     @Override
@@ -60,6 +62,11 @@ public class HttpDataFetcher implements Runnable {
                         lock.unlock();
                     }
                 }
+            }
+        }
+        if (executed.get() > pagesSet.size()) {
+            synchronized (parent) {
+                parent.interrupt();
             }
         }
         LOGGER.info(Thread.currentThread().getName() + " has ended.");

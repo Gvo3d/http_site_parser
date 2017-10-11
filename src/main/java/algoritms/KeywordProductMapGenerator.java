@@ -5,10 +5,7 @@ import models.Offer;
 import models.SitePage;
 import support.HttpDataFetcher;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -64,15 +61,18 @@ public class KeywordProductMapGenerator implements IProductMapGenerator {
         Runtime rnt = Runtime.getRuntime();
         int cpus = rnt.availableProcessors();
         ExecutorService threadPool = Executors.newFixedThreadPool(cpus);
+        List<HttpDataFetcher> runnables = new ArrayList<>();
         for (int i = 0; i < cpus; i++) {
-            HttpDataFetcher fetcher = new HttpDataFetcher("Thread_" + i, url, pagesSet, executedPages, getSender(), false);
+            HttpDataFetcher fetcher = new HttpDataFetcher("Thread_" + i, url, pagesSet, executedPages, getSender(), false, Thread.currentThread());
+            runnables.add(fetcher);
             threadPool.execute(fetcher);
         }
-        threadPool.shutdown();
-        try {
-            threadPool.awaitTermination(30, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            LOGGER.warn("Interrupted, while waiting ending of algorhitm.", e);
+        synchronized (Thread.currentThread()) {
+            try {
+                Thread.currentThread().wait();
+            } catch (InterruptedException e) {
+                threadPool.shutdown();
+            }
         }
         List<Offer> offers = getOffersList(this.pagesSet);
         afterExecutionSerialization(offers, FILE_NAME);
