@@ -5,6 +5,7 @@ import models.Offer;
 import org.apache.log4j.Logger;
 import org.jdom2.Document;
 import org.jdom2.Element;
+import org.jdom2.IllegalNameException;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
 
@@ -35,7 +36,12 @@ public class XmlSerializer {
             newElement.addContent(new Element("shippingCosts").setText(offer.getShippingCosts()));
             Element descriptionElement = new Element("description");
             for (DescriptionData data : offer.getDescription()) {
-                Element value = new Element(data.getName());
+                Element value;
+                try {
+                    value = new Element(data.getName());
+                } catch (IllegalNameException e) {
+                    value = new Element("descriptionParagraph");
+                }
                 for (String valueString : data.getData()) {
                     Element val = new Element("value").setText(valueString);
                     value.addContent(val);
