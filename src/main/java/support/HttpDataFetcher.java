@@ -1,6 +1,7 @@
 package support;
 
 import connector.HttpRequestSender;
+import models.Offer;
 import models.SitePage;
 import org.apache.log4j.Logger;
 import parsers.DataParser;
@@ -46,7 +47,12 @@ public class HttpDataFetcher implements Runnable {
                         String result = sender.doRequest(urlPrefix + page.getUrl()).get();
                         boolean isAProduct = parser.hasAProduct(page.getUrl());
                         if (isAProduct) {
-                            page.setOffer(parser.getProductData(result));
+                            Offer offer = parser.getProductData(result);
+                            if (offer!=null) {
+                                page.setOffer(offer);
+                            } else {
+                                LOGGER.info("Not a valid product: "+page.getUrl());
+                            }
                         }
                         if (fetchAllLinks) {
                             pagesSet.addAll(parser.getAllUrls(result));

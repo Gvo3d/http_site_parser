@@ -22,6 +22,7 @@ public class DataParser {
     private final static List<String> notLinkStartsRules = new ArrayList<>(4);
     private final static List<String> notLinkEqualsRules = new ArrayList<>(1);
     private final static List<String> notLinkEndsRules = new ArrayList<>(2);
+    private final static List<String> notLinkMatchesRules = new ArrayList<>(2);
     private StringLengthComparator comparator;
     private final ColorJsonSearcher searcher;
 
@@ -35,6 +36,7 @@ public class DataParser {
         notLinkEqualsRules.add("/");
         notLinkEndsRules.add(".css");
         notLinkEndsRules.add(".js");
+        notLinkMatchesRules.add(".*#.*");
     }
 
     public boolean hasAProduct(String pageName) {
@@ -75,25 +77,34 @@ public class DataParser {
                 return false;
             }
         }
+        for (String rule : notLinkMatchesRules) {
+            if (o.matches(rule)) {
+                return false;
+            }
+        }
         return true;
     }
 
     public Offer getProductData(String page) {
-        Document doc = Jsoup.parse(page);
-        Elements elements = doc.getElementsByClass("container");
-        Offer offer = new Offer();
-        String[] brandAndName = getBrandAndName(doc);
-        offer.setBrand(brandAndName[0]);
-        offer.setName(brandAndName[1]);
-        Element initialPrice = elements.select("span[class*=finalPrice]").select("span[class*=from]").first();
-        offer.setInitialPrice(initialPrice != null ? initialPrice.text() : "");
-        offer.setPrice(getPrice(elements));
-        offer.setArticleId(getArticle(elements));
-        offer.setColor(getColor(doc.children()));
-        offer.setSizes(getSizes(elements));
-        offer.setShippingCosts(getShippingCost(elements));
-        offer.setDescription(getDescription(elements));
-        return offer;
+        try {
+            Document doc = Jsoup.parse(page);
+            Elements elements = doc.getElementsByClass("container");
+            Offer offer = new Offer();
+            String[] brandAndName = getBrandAndName(doc);
+            offer.setBrand(brandAndName[0]);
+            offer.setName(brandAndName[1]);
+            Element initialPrice = elements.select("span[class*=finalPrice]").select("span[class*=from]").first();
+            offer.setInitialPrice(initialPrice != null ? initialPrice.text() : "");
+            offer.setPrice(getPrice(elements));
+            offer.setArticleId(getArticle(elements));
+            offer.setColor(getColor(doc.children()));
+            offer.setSizes(getSizes(elements));
+            offer.setShippingCosts(getShippingCost(elements));
+            offer.setDescription(getDescription(elements));
+            return offer;
+        } catch (NullPointerException e) {
+            return null;
+        }
     }
 
     private String[] getBrandAndName(Document doc){

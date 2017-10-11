@@ -56,7 +56,7 @@ public class HttpTest {
 
     @Test
     public void getOffer() {
-        String result = sender.doRequest("https://www.aboutyou.de/p/sheego-denim/stretchjeans-die-jeggings-3705309").get();
+        String result = sender.doRequest("https://www.aboutyou.de/p/kangaroos/rundhalspullover-3519128").get();
         Offer offer = parser.getProductData(result);
         assertNotNull(offer);
         System.out.println(offer);
